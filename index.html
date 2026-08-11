@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datos de prueba · Portada</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        paper:  "#EAECE8",
+        card:   "#F8F9F7",
+        ink:    "#161A17",
+        muted:  "#5F6B62",
+        rule:   "#CBD1CA",
+        seal:   "#0C5E46",
+        sealbg: "#DDEBE4",
+        mark:   "#8A3324",
+        markbg: "#F1E2DD"
+      },
+      fontFamily: {
+        display: ['"Bricolage Grotesque"', '"IBM Plex Sans"', "system-ui", "sans-serif"],
+        sans:    ['"IBM Plex Sans"', "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono:    ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"]
+      }
+    }
+  }
+};
+</script>
+</head>
+
+<body class="bg-paper text-ink font-sans antialiased p-5 sm:p-8 lg:p-14">
+<div class="mx-auto max-w-[1180px]">
+
+  <header class="mb-7 flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-5 sm:mb-10">
+    <div>
+      <h1 class="font-display text-[clamp(2.1rem,6vw,3.6rem)] font-extrabold leading-[1.02] tracking-tight">
+        Datos de prueba<br>con <span class="text-seal">dígito de control</span>
+      </h1>
+      <p class="mt-3 max-w-[52ch] text-[0.95rem] text-muted">
+        Identificadores españoles generados por algoritmo: NIF, NIE, CIF, IBAN, número de la Seguridad Social y tarjeta.
+        Dos formas de usarlos, la misma lógica detrás.
+      </p>
+    </div>
+    <span class="whitespace-nowrap border border-mark px-2.5 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-mark">
+      Solo para pruebas
+    </span>
+  </header>
+
+  <main class="grid gap-4 sm:gap-5 md:grid-cols-2">
+
+    <!-- Generador -->
+    <a href="generador.html"
+       class="group flex flex-col gap-4 border border-t-[3px] border-rule border-t-ink bg-card px-6 pb-6 pt-6 transition-colors hover:border-seal hover:border-t-seal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal motion-reduce:transition-none">
+      <div class="flex items-baseline justify-between gap-2.5 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-muted">
+        <span class="font-semibold text-ink">En el navegador</span>
+        <span>generador.html</span>
+      </div>
+      <h2 class="font-display text-2xl font-bold tracking-tight group-hover:text-seal">Generador</h2>
+      <p class="text-sm leading-relaxed text-muted">
+        Seis recuadros, uno por tipo. Cada identificador aparece descompuesto en prefijo, cuerpo y control,
+        con el cálculo que produce ese control debajo. El CIF lleva selector con los 17 tipos de entidad.
+        Se pulsa el valor y se copia.
+      </p>
+      <span class="mt-auto inline-flex w-fit items-center gap-2 border border-ink bg-ink px-4 py-2 text-sm font-semibold text-card transition-colors group-hover:border-seal group-hover:bg-seal motion-reduce:transition-none">
+        Abrir el generador →
+      </span>
+    </a>
+
+    <!-- API -->
+    <section class="flex flex-col gap-4 border border-t-[3px] border-rule border-t-ink bg-card px-6 pb-6 pt-6">
+      <div class="flex items-baseline justify-between gap-2.5 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-muted">
+        <span class="font-semibold text-ink">Por HTTP</span>
+        <span>api.mjs</span>
+      </div>
+      <h2 class="font-display text-2xl font-bold tracking-tight">API</h2>
+      <p class="text-sm leading-relaxed text-muted">
+        Los mismos generadores servidos en JSON, para consumirlos desde código. Node 18 o superior, sin dependencias.
+      </p>
+
+      <pre class="overflow-x-auto border-l-2 border-rule bg-paper px-3 py-2.5 font-mono text-[0.74rem] leading-relaxed text-ink"><code>node api.mjs
+
+GET /nif             un valor
+GET /nif/25          25 valores
+GET /cif/10?tipo=B   por tipo de entidad
+GET /nif?detalle=1   con el cálculo</code></pre>
+
+      <p class="mt-auto font-mono text-[0.72rem] text-muted">
+        Tipos: nif · nie · cif · iban · nss · tarjeta<br>
+        Máximo 1000 por petición. Detalles en el README.
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="mt-9 max-w-[70ch] border-t border-rule pt-4 text-sm text-muted">
+    <span class="font-semibold text-mark">Ninguno de estos valores corresponde a una persona, entidad o cuenta real.</span>
+    Son combinaciones que cumplen el algoritmo de control, pensadas para poblar formularios y probar validadores.
+    No sirven para ningún trámite.
+  </footer>
+
+</div>
+</body>
+</html>

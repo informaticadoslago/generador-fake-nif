@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dígitos de control · Generador de datos de prueba</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        paper:   "#EAECE8",
+        card:    "#F8F9F7",
+        ink:     "#161A17",
+        muted:   "#5F6B62",
+        rule:    "#CBD1CA",
+        seal:    "#0C5E46",
+        sealbg:  "#DDEBE4",
+        mark:    "#8A3324",
+        markbg:  "#F1E2DD"
+      },
+      fontFamily: {
+        display: ['"Bricolage Grotesque"', '"IBM Plex Sans"', "system-ui", "sans-serif"],
+        sans:    ['"IBM Plex Sans"', "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono:    ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"]
+      }
+    }
+  }
+};
+</script>
+</head>
+
+<body class="bg-paper text-ink font-sans antialiased p-5 sm:p-8 lg:p-14">
+<div class="mx-auto max-w-[1180px]">
+
+  <header class="mb-7 flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-5 sm:mb-10">
+    <div>
+      <h1 class="font-display text-[clamp(1.9rem,5vw,3rem)] font-extrabold leading-[1.02] tracking-tight">
+        Datos de prueba<br>con <span class="text-seal">dígito de control</span>
+      </h1>
+      <p class="mt-2 max-w-[46ch] text-[0.95rem] text-muted">
+        Seis identificadores españoles generados en el navegador. Cada uno muestra su anatomía y el cálculo que valida el carácter de control.
+      </p>
+    </div>
+    <div class="flex flex-col items-end gap-2">
+      <a href="index.html" class="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-muted underline decoration-rule underline-offset-4 hover:text-seal hover:decoration-seal">
+        ← Portada
+      </a>
+      <span class="whitespace-nowrap border border-mark px-2.5 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-mark">
+        Solo para pruebas
+      </span>
+    </div>
+  </header>
+
+  <main id="grid" class="grid gap-4 sm:gap-5 [grid-template-columns:repeat(auto-fill,minmax(330px,1fr))]"></main>
+
+  <footer class="mt-9 max-w-[70ch] border-t border-rule pt-4 text-sm text-muted">
+    <span class="font-semibold text-mark">Ninguno de estos valores corresponde a una persona, entidad o cuenta real.</span>
+    Son combinaciones que cumplen el algoritmo de control, pensadas para poblar formularios y probar validadores. No sirven para ningún trámite.
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============ utilidades ============ */
+const rnd  = n => Math.floor(Math.random() * n);
+const pad  = (n, l) => String(n).padStart(l, "0");
+const digs = l => Array.from({length: l}, () => rnd(10)).join("");
+
+/* ============ NIF ============ */
+const LETRAS = "TRWAGMYFPDXBNJZSQVHLCKE";
+
+function genNIF(){
+  const n = rnd(100000000);
+  const cuerpo = pad(n, 8);
+  const resto = n % 23;
+  const letra = LETRAS[resto];
+  return {
+    plano: cuerpo + letra,
+    segs: [
+      {chars: cuerpo, tag: "número",  role: "body"},
+      {chars: letra,  tag: "control", role: "control"}
+    ],
+    calc: `${cuerpo} mod 23 = ${resto} → posición ${resto} de «${LETRAS}» → <b class="font-semibold text-seal">${letra}</b>`
+  };
+}
+
+/* ============ NIE ============ */
+function genNIE(){
+  const pref = ["X","Y","Z"][rnd(3)];
+  const idx = "XYZ".indexOf(pref);
+  const cuerpo = digs(7);
+  const n = parseInt(idx + cuerpo, 10);
+  const resto = n % 23;
+  const letra = LETRAS[resto];
+  return {
+    plano: pref + cuerpo + letra,
+    segs: [
+      {chars: pref,   tag: "prefijo", role: "prefix"},
+      {chars: cuerpo, tag: "número",  role: "body"},
+      {chars: letra,  tag: "control", role: "control"}
+    ],
+    calc: `${pref} vale ${idx} → ${idx}${cuerpo} mod 23 = ${resto} → <b class="font-semibold text-seal">${letra}</b>`
+  };
+}
+
+/* ============ CIF ============ */
+// control: "letra" | "numero" | "ambos"
+const TIPOS_CIF = [
+  {l:"A", d:"Sociedad anónima",                        c:"numero"},
+  {l:"B", d:"Sociedad de responsabilidad limitada",    c:"numero"},
+  {l:"C", d:"Sociedad colectiva",                      c:"ambos"},
+  {l:"D", d:"Sociedad comanditaria",                   c:"ambos"},
+  {l:"E", d:"Comunidad de bienes y herencia yacente",  c:"numero"},
+  {l:"F", d:"Sociedad cooperativa",                    c:"ambos"},
+  {l:"G", d:"Asociación o fundación",                  c:"ambos"},
+  {l:"H", d:"Comunidad de propietarios",               c:"numero"},
+  {l:"J", d:"Sociedad civil",                          c:"ambos"},
+  {l:"N", d:"Entidad extranjera",                      c:"letra"},
+  {l:"P", d:"Corporación local",                       c:"letra"},
+  {l:"Q", d:"Organismo público",                       c:"letra"},
+  {l:"R", d:"Congregación o institución religiosa",    c:"letra"},
+  {l:"S", d:"Órgano de la Administración",             c:"letra"},
+  {l:"U", d:"Unión temporal de empresas",              c:"ambos"},
+  {l:"V", d:"Otros tipos no definidos",                c:"ambos"},
+  {l:"W", d:"Establecimiento permanente no residente", c:"letra"}
+];
+const LETRAS_CIF = "JABCDEFGHI";
+
+function genCIF(letraTipo){
+  const tipo = TIPOS_CIF.find(t => t.l === letraTipo) || TIPOS_CIF[0];
+  const cuerpo = digs(7);
+
+  let pares = 0, impares = 0;
+  const detalle = [];
+  for (let i = 0; i < 7; i++){
+    const d = +cuerpo[i];
+    if (i % 2 === 0){                 // posiciones 1,3,5,7
+      let x = d * 2;
+      if (x > 9) x -= 9;
+      impares += x;
+      detalle.push(`${d}×2=${d * 2 > 9 ? d * 2 + "→" + x : x}`);
+    } else {                          // posiciones 2,4,6
+      pares += d;
+    }
+  }
+  const total = pares + impares;
+  const dc = (10 - total % 10) % 10;
+  const usaLetra = tipo.c === "letra";
+  const control = usaLetra ? LETRAS_CIF[dc] : String(dc);
+
+  return {
+    plano: tipo.l + cuerpo + control,
+    segs: [
+      {chars: tipo.l,  tag: "tipo",    role: "prefix"},
+      {chars: cuerpo,  tag: "número",  role: "body"},
+      {chars: control, tag: "control", role: "control"}
+    ],
+    calc: `pares = ${pares} · impares ×2 = ${impares} (${detalle.join(", ")}) · suma ${total}`
+        + ` → (10 − ${total % 10}) mod 10 = ${dc}`
+        + (usaLetra
+            ? ` → letra <b class="font-semibold text-seal">${control}</b> (el tipo ${tipo.l} exige letra)`
+            : ` → <b class="font-semibold text-seal">${control}</b>`)
+  };
+}
+
+/* ============ IBAN ============ */
+const PESOS = [1,2,4,8,5,10,9,7,3,6];
+
+function dcBanco(str10){
+  let s = 0;
+  for (let i = 0; i < 10; i++) s += (+str10[i]) * PESOS[i];
+  let r = 11 - (s % 11);
+  if (r === 10) r = 1;
+  if (r === 11) r = 0;
+  return r;
+}
+function mod97(str){
+  let r = 0;
+  for (const ch of str) r = (r * 10 + (+ch)) % 97;
+  return r;
+}
+
+function genIBAN(){
+  const entidad = digs(4), oficina = digs(4), cuenta = digs(10);
+  const d1 = dcBanco("00" + entidad + oficina);
+  const d2 = dcBanco(cuenta);
+  const bban = entidad + oficina + d1 + d2 + cuenta;
+  const resto = mod97(bban + "142800");   // E=14, S=28, más "00"
+  const ctrl = pad(98 - resto, 2);
+  return {
+    plano: "ES" + ctrl + bban,
+    segs: [
+      {chars:"ES",           tag:"país",    role:"prefix"},
+      {chars:ctrl,           tag:"control", role:"control"},
+      {chars:entidad,        tag:"entidad", role:"body"},
+      {chars:oficina,        tag:"oficina", role:"body"},
+      {chars:`${d1}${d2}`,   tag:"dc ccc",  role:"control"},
+      {chars:cuenta,         tag:"cuenta",  role:"body"}
+    ],
+    calc: `DC del CCC: ${d1} sobre entidad+oficina, ${d2} sobre la cuenta (pesos 1,2,4,8,5,10,9,7,3,6 mod 11)`
+        + ` · IBAN: 98 − (${bban}142800 mod 97 = ${resto}) → <b class="font-semibold text-seal">${ctrl}</b>`
+  };
+}
+
+/* ============ Nº Seguridad Social ============ */
+function genNSS(){
+  const prov = pad(1 + rnd(53), 2);
+  const num  = String(10000000 + rnd(90000000));
+  const resto = mod97(prov + num);
+  const ctrl = pad(resto, 2);
+  return {
+    plano: prov + num + ctrl,
+    segs: [
+      {chars:prov, tag:"provincia", role:"prefix"},
+      {chars:num,  tag:"secuencia", role:"body"},
+      {chars:ctrl, tag:"control",   role:"control"}
+    ],
+    calc: `${prov}${num} mod 97 = ${resto} → <b class="font-semibold text-seal">${ctrl}</b>`
+  };
+}
+
+/* ============ Tarjeta (Luhn) ============ */
+const MARCAS = [
+  {n:"Visa",       bin:() => "4" + digs(5),                 len:16},
+  {n:"Mastercard", bin:() => String(51 + rnd(5)) + digs(4), len:16}
+];
+
+function luhn(parcial){
+  let suma = 0, doblar = true;
+  for (let i = parcial.length - 1; i >= 0; i--){
+    let d = +parcial[i];
+    if (doblar){ d *= 2; if (d > 9) d -= 9; }
+    suma += d;
+    doblar = !doblar;
+  }
+  return {dc: (10 - suma % 10) % 10, suma};
+}
+
+function genTarjeta(){
+  const m = MARCAS[rnd(MARCAS.length)];
+  const bin = m.bin();
+  const resto = digs(m.len - 1 - bin.length);
+  const parcial = bin + resto;
+  const {dc, suma} = luhn(parcial);
+  return {
+    plano: parcial + dc,
+    segs: [
+      {chars:bin,        tag:m.n,       role:"prefix"},
+      {chars:resto,      tag:"número",  role:"body"},
+      {chars:String(dc), tag:"control", role:"control"}
+    ],
+    calc: `Luhn sobre ${m.len - 1} dígitos → suma ${suma} · (10 − ${suma % 10}) mod 10 = <b class="font-semibold text-seal">${dc}</b>`
+  };
+}
+
+/* ============ definición de los seis recuadros ============ */
+const CAJAS = [
+  {titulo:"NIF",           nota:"8 dígitos + letra",   gen:genNIF},
+  {titulo:"NIE",           nota:"X/Y/Z + 7 + letra",   gen:genNIE},
+  {titulo:"CIF",           nota:"letra + 7 + control", gen:genCIF, select:true},
+  {titulo:"IBAN",          nota:"24 caracteres",       gen:genIBAN},
+  {titulo:"Nº S. Social",  nota:"12 dígitos",          gen:genNSS},
+  {titulo:"Tarjeta",       nota:"algoritmo de Luhn",   gen:genTarjeta}
+];
+
+/* ============ clases por rol del segmento ============ */
+const CHARS_BASE = "rounded-sm px-1.5 py-0.5 font-mono text-[clamp(1.25rem,3.4vw,1.6rem)] font-semibold tracking-[0.02em] whitespace-nowrap";
+const ROLE_CLASS = {
+  prefix:  "text-mark bg-markbg",
+  control: "text-seal bg-sealbg",
+  body:    "text-ink",
+  sep:     "text-rule"
+};
+
+/* ============ render ============ */
+const grid = document.getElementById("grid");
+
+function segHTML(s){
+  const tag = s.role === "sep"
+    ? `<span class="invisible font-mono text-[0.58rem]">·</span>`
+    : `<span class="font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">${s.tag}</span>`;
+  return `<span class="flex flex-col items-center gap-[5px]">
+            <span class="${CHARS_BASE} ${ROLE_CLASS[s.role]}">${s.chars}</span>${tag}
+          </span>`;
+}
+
+function pintar(card, datos){
+  const valor = card.querySelector("[data-value]");
+  valor.innerHTML = datos.segs.map(segHTML).join(segHTML({chars:"·", tag:"·", role:"sep"}));
+  valor.dataset.plano = datos.plano;
+  card.querySelector("[data-calc]").innerHTML = datos.calc;
+}
+
+CAJAS.forEach(def => {
+  const card = document.createElement("section");
+  card.className = "flex flex-col gap-3.5 border border-t-[3px] border-rule border-t-ink bg-card px-5 pb-4 pt-5";
+
+  const selectHTML = def.select
+    ? `<select aria-label="Tipo de entidad"
+         class="min-w-0 flex-1 basis-[190px] cursor-pointer border border-rule bg-card px-2 py-2 font-mono text-[0.78rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal">
+         ${TIPOS_CIF.map(t => `<option value="${t.l}">${t.l} — ${t.d}</option>`).join("")}
+       </select>`
+    : "";
+
+  card.innerHTML = `
+    <div class="flex items-baseline justify-between gap-2.5 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-muted">
+      <span class="font-semibold text-ink">${def.titulo}</span><span>${def.nota}</span>
+    </div>
+
+    <button type="button" data-value title="Pulsa para copiar"
+      class="flex w-full flex-wrap items-end gap-0.5 pt-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal focus-visible:ring-offset-4 focus-visible:ring-offset-card"></button>
+
+    <p data-calc class="m-0 border-l-2 border-rule pl-2.5 font-mono text-[0.74rem] leading-relaxed text-muted [overflow-wrap:anywhere]"></p>
+
+    <div class="mt-auto flex flex-wrap items-center gap-2.5 pt-1">
+      ${selectHTML}
+      <button type="button" data-gen
+        class="border border-ink bg-ink px-4 py-2 text-sm font-semibold text-card transition-colors hover:border-seal hover:bg-seal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none">
+        Generar otro
+      </button>
+      <span data-aviso class="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-seal opacity-0 transition-opacity motion-reduce:transition-none">Copiado</span>
+    </div>`;
+
+  const select = card.querySelector("select");
+  const regenerar = () => pintar(card, def.gen(select ? select.value : undefined));
+
+  card.querySelector("[data-gen]").addEventListener("click", regenerar);
+  if (select) select.addEventListener("change", regenerar);
+
+  card.querySelector("[data-value]").addEventListener("click", async e => {
+    const aviso = card.querySelector("[data-aviso]");
+    try {
+      await navigator.clipboard.writeText(e.currentTarget.dataset.plano);
+      aviso.textContent = "Copiado";
+    } catch {
+      aviso.textContent = "Copia manual";
+    }
+    aviso.classList.replace("opacity-0", "opacity-100");
+    setTimeout(() => aviso.classList.replace("opacity-100", "opacity-0"), 1400);
+  });
+
+  grid.appendChild(card);
+  regenerar();
+});
+</script>
+</body>
+</html>
