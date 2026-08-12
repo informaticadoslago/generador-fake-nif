@@ -86,6 +86,10 @@ function indice(){
   return {
     nombre: "API de datos de prueba",
     aviso: "Los valores cumplen el algoritmo de control pero no corresponden a personas, entidades ni cuentas reales.",
+    autenticacion: {
+      cabecera: "Authorization: Bearer <token>",
+      ayuda: "Todas las peticiones requieren un token válido. Solicítalo al administrador."
+    },
     uso: {
       uno: "/nif",
       varios: "/nif/25  o  /nif?n=25",

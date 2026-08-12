@@ -78,14 +78,15 @@ tailwind.config = {
     <section class="flex flex-col gap-4 border border-t-[3px] border-rule border-t-ink bg-card px-6 pb-6 pt-6">
       <div class="flex items-baseline justify-between gap-2.5 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-muted">
         <span class="font-semibold text-ink">Por HTTP</span>
-        <span>api.mjs</span>
+        <span>requiere token</span>
       </div>
       <h2 class="font-display text-2xl font-bold tracking-tight">API</h2>
       <p class="text-sm leading-relaxed text-muted">
-        Los mismos generadores servidos en JSON, para consumirlos desde código. Node 18 o superior, sin dependencias.
+        Los mismos generadores servidos en JSON, para consumirlos desde código. Cada petición requiere un token
+        de acceso; solicítalo al administrador y envíalo en la cabecera <code>Authorization</code>.
       </p>
 
-      <pre class="overflow-x-auto border-l-2 border-rule bg-paper px-3 py-2.5 font-mono text-[0.74rem] leading-relaxed text-ink"><code>node api.mjs
+      <pre class="overflow-x-auto border-l-2 border-rule bg-paper px-3 py-2.5 font-mono text-[0.74rem] leading-relaxed text-ink"><code>Authorization: Bearer &lt;token&gt;
 
 GET /nif             un valor
 GET /nif/25          25 valores
@@ -94,7 +95,7 @@ GET /nif?detalle=1   con el cálculo</code></pre>
 
       <p class="mt-auto font-mono text-[0.72rem] text-muted">
         Tipos: nif · nie · cif · iban · nss · tarjeta<br>
-        Máximo 1000 por petición. Detalles en el README.
+        Máximo 1000 por petición. Sin token válido, todas las rutas devuelven 401.
       </p>
     </section>
 
