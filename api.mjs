@@ -16,6 +16,7 @@
 
 import { createServer } from "node:http";
 import { GENERADORES, TIPOS_CIF } from "./generadores.mjs";
+import { validar, crearToken, listarTokens, revocarPorEmail, tokenAdminInicial } from "./tokens.mjs";
 
 const PUERTO = Number(process.env.PORT) || 3000;
 const MAX = 1000;
@@ -34,6 +35,51 @@ function json(res, codigo, cuerpo){
 
 const error = (res, codigo, mensaje, ayuda) =>
   json(res, codigo, ayuda ? { error: mensaje, ayuda } : { error: mensaje });
+
+function extraerToken(req){
+  const cabecera = req.headers["authorization"] || "";
+  const m = /^Bearer\s+(.+)$/i.exec(cabecera.trim());
+  return m ? m[1].trim() : null;
+}
+
+/* ---------- administración de tokens ---------- */
+function rutaAdmin(req, res, segmentos, url){
+  if (segmentos[1] !== "tokens"){
+    return error(res, 404, "Ruta de administración desconocida");
+  }
+
+  if (req.method === "GET"){
+    return json(res, 200, { tokens: listarTokens() });
+  }
+
+  if (req.method === "POST"){
+    const email = (url.searchParams.get("email") || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      return error(res, 400, "Email no válido");
+    }
+    let dias;
+    const diasParam = url.searchParams.get("dias");
+    if (diasParam !== null){
+      if (!/^\d+$/.test(diasParam) || Number(diasParam) < 1){
+        return error(res, 400, "El parámetro días debe ser un entero positivo");
+      }
+      dias = Number(diasParam);
+    }
+    return json(res, 201, crearToken(email, dias));
+  }
+
+  if (req.method === "DELETE"){
+    const email = (url.searchParams.get("email") || "").trim().toLowerCase();
+    if (!email) return error(res, 400, "Falta el parámetro email");
+    const revocados = revocarPorEmail(email);
+    if (revocados === 0){
+      return error(res, 404, `No hay tokens activos para ${email}`);
+    }
+    return json(res, 200, { revocados, email });
+  }
+
+  return error(res, 405, "Método no admitido en /admin/tokens");
+}
 
 /* ---------- índice ---------- */
 function indice(){
@@ -58,16 +104,32 @@ const servidor = createServer((req, res) => {
   if (req.method === "OPTIONS"){
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS"
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type"
     });
     return res.end();
   }
-  if (req.method !== "GET"){
-    return error(res, 405, "Solo se admite GET");
+
+  const sesion = validar(extraerToken(req));
+  if (!sesion){
+    return error(res, 401, "Token inválido, ausente o caducado",
+      "Cabecera requerida: Authorization: Bearer <token>");
   }
 
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const segmentos = url.pathname.split("/").filter(Boolean);
+
+  // rutas de administración de tokens
+  if (segmentos[0] === "admin"){
+    if (!sesion.esAdmin){
+      return error(res, 403, "Se requiere token de administrador");
+    }
+    return rutaAdmin(req, res, segmentos, url);
+  }
+
+  if (req.method !== "GET"){
+    return error(res, 405, "Solo se admite GET");
+  }
 
   // GET /
   if (segmentos.length === 0) return json(res, 200, indice());
@@ -131,4 +193,8 @@ const servidor = createServer((req, res) => {
 servidor.listen(PUERTO, () => {
   console.log(`API escuchando en http://localhost:${PUERTO}`);
   console.log(`Tipos: ${Object.keys(GENERADORES).join(", ")}`);
+  const admin = tokenAdminInicial();
+  if (admin){
+    console.log(`\nToken admin generado (guárdalo ahora, no se volverá a mostrar):\n${admin}\n`);
+  }
 });
