@@ -8,6 +8,8 @@
  * rol: "prefijo" | "cuerpo" | "control"
  */
 
+import { ENTIDADES_BANCARIAS } from "./entidades_bancarias.mjs";
+
 /* ============ utilidades ============ */
 const rnd  = n => Math.floor(Math.random() * n);
 const pad  = (n, l) => String(n).padStart(l, "0");
@@ -141,7 +143,8 @@ export function mod97(str){
 }
 
 export function generarIBAN(){
-  const entidad = digs(4), oficina = digs(4), cuenta = digs(10);
+  const banco = ENTIDADES_BANCARIAS[rnd(ENTIDADES_BANCARIAS.length)];
+  const entidad = banco.codigo, oficina = digs(4), cuenta = digs(10);
   const d1 = dcBanco("00" + entidad + oficina);
   const d2 = dcBanco(cuenta);
   const bban = entidad + oficina + d1 + d2 + cuenta;
@@ -149,6 +152,7 @@ export function generarIBAN(){
   const control = pad(98 - resto, 2);
   return {
     valor: "ES" + control + bban,
+    banco: { codigo: banco.codigo, nombre: banco.nombre },
     partes: [
       { texto: "ES",         etiqueta: "país",    rol: "prefijo" },
       { texto: control,      etiqueta: "control", rol: "control" },
@@ -157,14 +161,15 @@ export function generarIBAN(){
       { texto: `${d1}${d2}`, etiqueta: "dc ccc",  rol: "control" },
       { texto: cuenta,       etiqueta: "cuenta",  rol: "cuerpo" }
     ],
-    calculo: `DC del CCC: ${d1} sobre entidad+oficina, ${d2} sobre la cuenta (pesos ${PESOS.join(",")} mod 11)`
+    calculo: `Entidad ${entidad} (${banco.nombre}) | DC del CCC: ${d1} sobre entidad+oficina, ${d2} sobre la cuenta (pesos ${PESOS.join(",")} mod 11)`
            + ` | IBAN: 98 - (mod 97 = ${resto}) -> ${control}`
   };
 }
 
 /* ============ Número de la Seguridad Social ============ */
+// 50 provincias + Ceuta (51) y Melilla (52)
 export function generarNSS(){
-  const provincia = pad(1 + rnd(53), 2);
+  const provincia = pad(1 + rnd(52), 2);
   const secuencia = String(10000000 + rnd(90000000));
   const resto = mod97(provincia + secuencia);
   const control = pad(resto, 2);
@@ -214,12 +219,79 @@ export function generarTarjeta(){
   };
 }
 
-/* ============ registro de tipos ============ */
+/* ============ Matrícula ============ */
+// formato vigente desde 2000: sin vocales, sin Ñ, sin Q. Sin dígito de control.
+export const LETRAS_MATRICULA = "BCDFGHJKLMNPRSTVWXYZ";
+
+export function generarMatricula(){
+  const numero = pad(rnd(10000), 4);
+  const letras = Array.from({ length: 3 }, () => LETRAS_MATRICULA[rnd(LETRAS_MATRICULA.length)]).join("");
+  return {
+    valor: numero + letras,
+    partes: [
+      { texto: numero, etiqueta: "número", rol: "cuerpo" },
+      { texto: letras, etiqueta: "letras", rol: "cuerpo" }
+    ],
+    calculo: `Formato 2000-actual: 4 dígitos + 3 consonantes de "${LETRAS_MATRICULA}" (sin vocales, Ñ ni Q). Sin dígito de control.`
+  };
+}
+
+/* ============ CUPS ============ */
+function mod529(str){
+  let r = 0;
+  for (const ch of str) r = (r * 10 + (+ch)) % 529;
+  return r;
+}
+
+export function generarCUPS(){
+  const cuerpo = digs(16);
+  const resto = mod529(cuerpo);
+  const i1 = Math.floor(resto / 23), i2 = resto % 23;
+  const control = LETRAS_NIF[i1] + LETRAS_NIF[i2];
+  return {
+    valor: "ES" + cuerpo + control,
+    partes: [
+      { texto: "ES",     etiqueta: "país",    rol: "prefijo" },
+      { texto: cuerpo,   etiqueta: "número",  rol: "cuerpo" },
+      { texto: control,  etiqueta: "control", rol: "control" }
+    ],
+    calculo: `${cuerpo} mod 529 = ${resto} -> posiciones ${i1} y ${i2} de "${LETRAS_NIF}" -> ${control}`
+  };
+}
+
+/* ============ IMEI ============ */
+export function generarIMEI(){
+  const tac = digs(8);
+  const serie = digs(6);
+  const parcial = tac + serie;
+  const { digito, suma } = digitoLuhn(parcial);
+  return {
+    valor: parcial + String(digito),
+    partes: [
+      { texto: tac,             etiqueta: "TAC",     rol: "prefijo" },
+      { texto: serie,           etiqueta: "serie",   rol: "cuerpo" },
+      { texto: String(digito),  etiqueta: "control", rol: "control" }
+    ],
+    calculo: `Luhn sobre 14 dígitos (TAC + serie), suma ${suma} -> (10 - ${suma % 10}) mod 10 = ${digito}`
+  };
+}
+
+/* ============ categorías y registro de tipos ============ */
+export const CATEGORIAS = {
+  documentos: "Documentos identificativos de personas y entidades",
+  financiero: "Datos financieros",
+  vehiculos:  "Datos de vehículos",
+  miscelanea: "Instalaciones, dispositivos y otros"
+};
+
 export const GENERADORES = {
-  nif:     { generar: generarNIF,     descripcion: "NIF español: 8 dígitos + letra de control" },
-  nie:     { generar: generarNIE,     descripcion: "NIE: prefijo X/Y/Z + 7 dígitos + letra" },
-  cif:     { generar: generarCIF,     descripcion: "CIF: letra de tipo + 7 dígitos + control", parametro: "tipo" },
-  iban:    { generar: generarIBAN,    descripcion: "IBAN español de 24 caracteres" },
-  nss:     { generar: generarNSS,     descripcion: "Número de la Seguridad Social: 12 dígitos" },
-  tarjeta: { generar: generarTarjeta, descripcion: "Tarjeta de prueba válida según Luhn" }
+  nif:       { categoria: "documentos", generar: generarNIF,       descripcion: "NIF español: 8 dígitos + letra de control" },
+  nie:       { categoria: "documentos", generar: generarNIE,       descripcion: "NIE: prefijo X/Y/Z + 7 dígitos + letra" },
+  cif:       { categoria: "documentos", generar: generarCIF,       descripcion: "CIF: letra de tipo + 7 dígitos + control", parametro: "tipo" },
+  nss:       { categoria: "documentos", generar: generarNSS,       descripcion: "Número de la Seguridad Social: 12 dígitos" },
+  iban:      { categoria: "financiero", generar: generarIBAN,      descripcion: "IBAN español de 24 caracteres" },
+  tarjeta:   { categoria: "financiero", generar: generarTarjeta,   descripcion: "Tarjeta de prueba válida según Luhn" },
+  matricula: { categoria: "vehiculos",  generar: generarMatricula, descripcion: "Matrícula española: 4 dígitos + 3 consonantes" },
+  cups:      { categoria: "miscelanea", generar: generarCUPS,      descripcion: "CUPS: ES + 16 dígitos + 2 letras de control" },
+  imei:      { categoria: "miscelanea", generar: generarIMEI,      descripcion: "IMEI: 14 dígitos (TAC + serie) + dígito de control Luhn" }
 };

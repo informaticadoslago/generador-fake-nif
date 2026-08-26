@@ -88,13 +88,14 @@ tailwind.config = {
 
       <pre class="overflow-x-auto border-l-2 border-rule bg-paper px-3 py-2.5 font-mono text-[0.74rem] leading-relaxed text-ink"><code>Authorization: Bearer &lt;token&gt;
 
-GET /nif             un valor
-GET /nif/25          25 valores
-GET /cif/10?tipo=B   por tipo de entidad
-GET /nif?detalle=1   con el cálculo</code></pre>
+GET /documentos/nif             un valor
+GET /documentos/nif/25          25 valores
+GET /documentos/cif/10?tipo=B   por tipo de entidad
+GET /documentos/nif?detalle=1   con el cálculo</code></pre>
 
       <p class="mt-auto font-mono text-[0.72rem] text-muted">
-        Tipos: nif · nie · cif · iban · nss · tarjeta<br>
+        documentos: nif · nie · cif · nss — financiero: iban · tarjeta<br>
+        vehiculos: matricula — miscelanea: cups · imei<br>
         Máximo 1000 por petición. Sin token válido, todas las rutas devuelven 401.
       </p>
     </section>

@@ -28,37 +28,46 @@ generador_nif/
 | Ruta | Devuelve |
 |---|---|
 | `GET /` | Índice de la API |
-| `GET /tipos` | Catálogo de tipos, con las 17 letras de CIF |
-| `GET /:tipo` | Un identificador |
-| `GET /:tipo/:n` | `n` identificadores (1–1000) |
-| `GET /:tipo?n=5` | Igual que el anterior |
+| `GET /tipos` | Catálogo de tipos por categoría, con las 17 letras de CIF |
+| `GET /:categoria/:tipo` | Un identificador |
+| `GET /:categoria/:tipo/:n` | `n` identificadores (1–1000) |
+| `GET /:categoria/:tipo?n=5` | Igual que el anterior |
 
-Tipos: `nif`, `nie`, `cif`, `iban`, `nss`, `tarjeta`.
+Categorías y tipos:
+
+| Categoría | Tipos |
+|---|---|
+| `documentos` | `nif`, `nie`, `cif`, `nss` |
+| `financiero` | `iban`, `tarjeta` |
+| `vehiculos` | `matricula` |
+| `miscelanea` | `cups`, `imei` |
 
 ## Parámetros
 
-- `?n=` — cantidad. Equivale al segundo segmento de la ruta; si aparecen los dos, gana la ruta.
+- `?n=` — cantidad. Equivale al tercer segmento de la ruta; si aparecen los dos, gana la ruta.
 - `?detalle=1` — añade el desglose en partes y el cálculo del control.
-- `?tipo=` — solo en `/cif`. Letra de tipo de entidad (A–W). Sin ella, se elige al azar.
+- `?tipo=` — solo en `/documentos/cif`. Letra de tipo de entidad (A–W). Sin ella, se elige al azar.
 
 ## Ejemplos
 
 ```bash
-curl localhost:3000/nif -H "Authorization: Bearer $TOKEN"
+curl localhost:3000/documentos/nif -H "Authorization: Bearer $TOKEN"
 # {"tipo":"nif","valor":"02554413X"}
 
-curl localhost:3000/nie/3 -H "Authorization: Bearer $TOKEN"
+curl localhost:3000/documentos/nie/3 -H "Authorization: Bearer $TOKEN"
 # {"tipo":"nie","total":3,"datos":["Y2608924W","Y3754363H","Y9953446A"]}
 
-curl "localhost:3000/cif/4?tipo=B" -H "Authorization: Bearer $TOKEN"
-curl "localhost:3000/cif?tipo=Q&detalle=1" -H "Authorization: Bearer $TOKEN"
-curl "localhost:3000/tarjeta?n=100" -H "Authorization: Bearer $TOKEN"
+curl "localhost:3000/documentos/cif/4?tipo=B" -H "Authorization: Bearer $TOKEN"
+curl "localhost:3000/documentos/cif?tipo=Q&detalle=1" -H "Authorization: Bearer $TOKEN"
+curl "localhost:3000/financiero/tarjeta?n=100" -H "Authorization: Bearer $TOKEN"
+curl "localhost:3000/vehiculos/matricula" -H "Authorization: Bearer $TOKEN"
+curl "localhost:3000/miscelanea/imei" -H "Authorization: Bearer $TOKEN"
 ```
 
 Extraer solo los valores a un fichero:
 
 ```bash
-curl -s "localhost:3000/nif/500" -H "Authorization: Bearer $TOKEN" | jq -r '.datos[]' > nifs.txt
+curl -s "localhost:3000/documentos/nif/500" -H "Authorization: Bearer $TOKEN" | jq -r '.datos[]' > nifs.txt
 ```
 
 ## Autenticación
@@ -97,7 +106,7 @@ Siempre JSON con `error`, y `ayuda` cuando procede.
 |---|---|
 | Token ausente, inválido o caducado | 401 |
 | Token válido pero sin permiso admin en `/admin/*` | 403 |
-| Tipo desconocido | 404 |
+| Categoría o tipo desconocido | 404 |
 | Cantidad no numérica o fuera de rango | 400 |
 | Letra de CIF no válida | 400 |
 | Método distinto de GET (fuera de `/admin/tokens`) | 405 |
@@ -106,7 +115,7 @@ CORS abierto (`Access-Control-Allow-Origin: *`). Ojo: un token incrustado en una
 
 ## Estructura
 
-- `generadores.mjs` — los seis algoritmos. Sin nada de HTTP ni de navegador: se importa igual desde la API, desde tests o desde un script.
+- `generadores.mjs` — los nueve algoritmos y sus categorías. Sin nada de HTTP ni de navegador: se importa igual desde la API, desde tests o desde un script.
 - `tokens.mjs` — almacén de tokens en `tokens.json` (crear, listar, revocar, validar).
 - `api.mjs` — capa HTTP. Autenticación, rutas, validación y serialización.
 
@@ -116,4 +125,4 @@ Añadir un tipo nuevo es escribir la función generadora y una entrada en `GENER
 
 Los valores cumplen el algoritmo de control pero no corresponden a personas, entidades ni cuentas reales. No sirven para ningún trámite.
 
-Los algoritmos de NIF, NIE, CIF, IBAN y Luhn están contrastados contra identificadores públicos conocidos. El del número de la Seguridad Social no ha podido verificarse contra ningún NAF real: usa `provincia + secuencia mod 97` y la secuencia se genera siempre ≥ 10.000.000 para evitar el caso especial de los números bajos.
+Los algoritmos de NIF, NIE, CIF, IBAN y Luhn (tarjeta e IMEI) están contrastados contra identificadores públicos conocidos. El del número de la Seguridad Social no ha podido verificarse contra ningún NAF real: usa `provincia + secuencia mod 97` y la secuencia se genera siempre ≥ 10.000.000 para evitar el caso especial de los números bajos. El de CUPS (`mod 529` sobre los 16 dígitos, dos letras de la misma tabla que NIF) tampoco se ha contrastado contra un CUPS real, aunque es el algoritmo de referencia documentado públicamente. La matrícula no lleva dígito de control: solo reproduce el juego de caracteres válido (sin vocales, Ñ ni Q).

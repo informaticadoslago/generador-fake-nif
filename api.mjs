@@ -5,17 +5,20 @@
  *   PORT=8080 node api.mjs
  *
  * Rutas:
- *   GET /                     índice de la API
- *   GET /:tipo                un identificador
- *   GET /:tipo/:n             n identificadores (1..1000)
- *   GET /:tipo?n=5            equivalente al anterior
- *   GET /cif?tipo=B           fuerza la letra de tipo de entidad
- *   GET /:tipo?detalle=1      añade el desglose y el cálculo del control
- *   GET /tipos                catálogo de tipos, incluidas las letras de CIF
+ *   GET /                              índice de la API
+ *   GET /:categoria/:tipo              un identificador
+ *   GET /:categoria/:tipo/:n           n identificadores (1..1000)
+ *   GET /:categoria/:tipo?n=5          equivalente al anterior
+ *   GET /documentos/cif?tipo=B         fuerza la letra de tipo de entidad
+ *   GET /:categoria/:tipo?detalle=1    añade el desglose y el cálculo del control
+ *   GET /tipos                         catálogo de tipos por categoría, con las letras de CIF
+ *
+ * Categorías: documentos (nif, nie, cif, nss), financiero (iban, tarjeta),
+ *             vehiculos (matricula), miscelanea (cups, imei)
  */
 
 import { createServer } from "node:http";
-import { GENERADORES, TIPOS_CIF } from "./generadores.mjs";
+import { GENERADORES, TIPOS_CIF, CATEGORIAS } from "./generadores.mjs";
 import { validar, crearToken, listarTokens, revocarPorEmail, tokenAdminInicial } from "./tokens.mjs";
 
 const PUERTO = Number(process.env.PORT) || 3000;
@@ -91,14 +94,17 @@ function indice(){
       ayuda: "Todas las peticiones requieren un token válido. Solicítalo al administrador."
     },
     uso: {
-      uno: "/nif",
-      varios: "/nif/25  o  /nif?n=25",
-      con_desglose: "/nif?detalle=1",
-      cif_por_tipo: "/cif/10?tipo=B"
+      uno: "/documentos/nif",
+      varios: "/documentos/nif/25  o  /documentos/nif?n=25",
+      con_desglose: "/documentos/nif?detalle=1",
+      cif_por_tipo: "/documentos/cif/10?tipo=B"
     },
     limite: `n entre 1 y ${MAX}`,
-    tipos: Object.fromEntries(
-      Object.entries(GENERADORES).map(([k, v]) => [k, v.descripcion])
+    categorias: Object.fromEntries(
+      Object.entries(CATEGORIAS).map(([clave, descripcion]) => [
+        clave,
+        { descripcion, tipos: Object.keys(GENERADORES).filter(k => GENERADORES[k].categoria === clave) }
+      ])
     )
   };
 }
@@ -141,22 +147,37 @@ const servidor = createServer((req, res) => {
   // GET /tipos
   if (segmentos[0] === "tipos"){
     return json(res, 200, {
-      identificadores: Object.entries(GENERADORES).map(([clave, v]) => ({
-        clave, descripcion: v.descripcion, parametro: v.parametro ?? null
-      })),
+      categorias: Object.fromEntries(
+        Object.entries(CATEGORIAS).map(([clave, descripcion]) => [
+          clave,
+          {
+            descripcion,
+            tipos: Object.entries(GENERADORES)
+              .filter(([, v]) => v.categoria === clave)
+              .map(([k, v]) => ({ clave: k, descripcion: v.descripcion, parametro: v.parametro ?? null }))
+          }
+        ])
+      ),
       cif: TIPOS_CIF
     });
   }
 
-  const clave = segmentos[0].toLowerCase();
-  const generador = GENERADORES[clave];
-  if (!generador){
-    return error(res, 404, `Tipo desconocido: ${clave}`,
-      `Tipos válidos: ${Object.keys(GENERADORES).join(", ")}`);
+  const categoria = segmentos[0].toLowerCase();
+  if (!CATEGORIAS[categoria]){
+    return error(res, 404, `Categoría desconocida: ${categoria}`,
+      `Categorías válidas: ${Object.keys(CATEGORIAS).join(", ")}`);
   }
 
-  // cantidad: /nif/25 tiene prioridad sobre /nif?n=25
-  const bruto = segmentos[1] ?? url.searchParams.get("n");
+  const clave = (segmentos[1] || "").toLowerCase();
+  const generador = GENERADORES[clave];
+  if (!generador || generador.categoria !== categoria){
+    const tiposCategoria = Object.keys(GENERADORES).filter(k => GENERADORES[k].categoria === categoria);
+    return error(res, 404, `Tipo desconocido en /${categoria}: ${clave || "(ninguno)"}`,
+      `Tipos válidos en ${categoria}: ${tiposCategoria.join(", ")}`);
+  }
+
+  // cantidad: /documentos/nif/25 tiene prioridad sobre /documentos/nif?n=25
+  const bruto = segmentos[2] ?? url.searchParams.get("n");
   let n = 1;
   if (bruto !== null && bruto !== undefined){
     if (!/^\d+$/.test(bruto)){
