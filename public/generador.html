@@ -189,8 +189,11 @@ function mod97(str){
   return r;
 }
 
+// Entidad fijada con «Fijar entidad» (4 dígitos); null = aleatoria.
+let entidadFija = null;
+
 function genIBAN(){
-  const entidad = digs(4), oficina = digs(4), cuenta = digs(10);
+  const entidad = entidadFija ?? digs(4), oficina = digs(4), cuenta = digs(10);
   const d1 = dcBanco("00" + entidad + oficina);
   const d2 = dcBanco(cuenta);
   const bban = entidad + oficina + d1 + d2 + cuenta;
@@ -267,7 +270,7 @@ const CAJAS = [
   {titulo:"NIF",           nota:"8 dígitos + letra",   gen:genNIF},
   {titulo:"NIE",           nota:"X/Y/Z + 7 + letra",   gen:genNIE},
   {titulo:"CIF",           nota:"letra + 7 + control", gen:genCIF, select:true},
-  {titulo:"IBAN",          nota:"24 caracteres",       gen:genIBAN},
+  {titulo:"IBAN",          nota:"24 caracteres",       gen:genIBAN, fijarEntidad:true},
   {titulo:"Nº S. Social",  nota:"12 dígitos",          gen:genNSS},
   {titulo:"Tarjeta",       nota:"algoritmo de Luhn",   gen:genTarjeta}
 ];
@@ -311,6 +314,13 @@ CAJAS.forEach(def => {
        </select>`
     : "";
 
+  const fijarHTML = def.fijarEntidad
+    ? `<button type="button" data-fijar title="Fija los 4 dígitos de la entidad (Mayús+clic: vuelve a ser aleatoria)"
+         class="border border-ink bg-card px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-seal hover:text-seal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none">
+         Fijar entidad
+       </button>`
+    : "";
+
   card.innerHTML = `
     <div class="flex items-baseline justify-between gap-2.5 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-muted">
       <span class="font-semibold text-ink">${def.titulo}</span><span>${def.nota}</span>
@@ -327,6 +337,7 @@ CAJAS.forEach(def => {
         class="border border-ink bg-ink px-4 py-2 text-sm font-semibold text-card transition-colors hover:border-seal hover:bg-seal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seal focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none">
         Generar otro
       </button>
+      ${fijarHTML}
       <span data-aviso class="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-seal opacity-0 transition-opacity motion-reduce:transition-none">Copiado</span>
     </div>`;
 
@@ -335,6 +346,21 @@ CAJAS.forEach(def => {
 
   card.querySelector("[data-gen]").addEventListener("click", regenerar);
   if (select) select.addEventListener("change", regenerar);
+
+  // Pide los 4 dígitos de la entidad y genera otro con ella; Mayús+clic la suelta.
+  const fijar = card.querySelector("[data-fijar]");
+  if (fijar) fijar.addEventListener("click", e => {
+    if (e.shiftKey) {
+      entidadFija = null;
+    } else {
+      const valor = prompt("4 dígitos de la entidad", entidadFija ?? "");
+      if (valor === null) return;
+      if (!/^\d{4}$/.test(valor.trim())) { alert("La entidad son 4 dígitos."); return; }
+      entidadFija = valor.trim();
+    }
+    fijar.textContent = entidadFija ? `Entidad ${entidadFija}` : "Fijar entidad";
+    regenerar();
+  });
 
   card.querySelector("[data-value]").addEventListener("click", async e => {
     const aviso = card.querySelector("[data-aviso]");
